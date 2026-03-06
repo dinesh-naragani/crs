@@ -41,10 +41,7 @@ Thumbs.db
 .mypy_cache/
 .ruff_cache/
 
-# Model artifacts (generated during training)
-models/*.h5
-models/*.keras
-models/artifacts/*.joblib
+# Model artifacts are intentionally tracked for easier setup
 
 # Optional local datasets and exports
 *.parquet

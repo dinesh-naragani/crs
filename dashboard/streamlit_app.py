@@ -33,28 +33,40 @@ def inject_custom_css() -> None:
         @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
         :root {
-            --bg-1: #f4f7ee;
-            --bg-2: #e5edcf;
-            --ink: #1f2c1d;
-            --muted: #4f5f4b;
-            --brand: #2e6f40;
-            --brand-2: #c8a24a;
-            --card: #ffffff;
+            --bg-1: #000000;
+            --bg-2: #0a0a0a;
+            --ink: #ffffff;
+            --muted: #d0d0d0;
+            --brand: #00d1b2;
+            --brand-2: #f59e0b;
+            --card: #101010;
         }
 
         .stApp {
             font-family: 'Space Grotesk', sans-serif;
             color: var(--ink);
-            background: radial-gradient(circle at top right, #dce8b8 0%, transparent 38%),
-                        radial-gradient(circle at 20% 20%, #f3e5ba 0%, transparent 32%),
-                        linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+            background: radial-gradient(circle at 15% 20%, rgba(0, 209, 178, 0.12) 0%, transparent 30%),
+                        radial-gradient(circle at 88% 12%, rgba(245, 158, 11, 0.10) 0%, transparent 28%),
+                        linear-gradient(170deg, var(--bg-1) 0%, var(--bg-2) 100%);
+        }
+
+        .stApp, .stApp p, .stApp li, .stApp span, .stApp div,
+        .stApp label, .stApp h1, .stApp h2, .stApp h3, .stApp h4,
+        .stMarkdown, .stText, .stCaption {
+            color: var(--ink);
+        }
+
+        section[data-testid="stSidebar"] {
+            background: #050505;
+            border-right: 1px solid rgba(255, 255, 255, 0.10);
         }
 
         .hero {
             padding: 1.2rem 1.4rem;
             border-radius: 18px;
-            border: 1px solid rgba(46, 111, 64, 0.2);
-            background: linear-gradient(140deg, rgba(46, 111, 64, 0.08), rgba(200, 162, 74, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            background: #0b0b0b;
+            box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 30px rgba(0, 0, 0, 0.45);
             animation: riseIn 450ms ease-out;
         }
 
@@ -71,13 +83,47 @@ def inject_custom_css() -> None:
 
         .metric-card {
             border-radius: 14px;
-            border: 1px solid rgba(46, 111, 64, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.20);
             background: var(--card);
             padding: 0.9rem 1rem;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.35);
+        }
+
+        .metric-card h3 {
+            color: #ffffff;
+            margin-top: 0.25rem;
+            margin-bottom: 0.1rem;
+            font-size: 1.4rem;
         }
 
         .mono {
             font-family: 'IBM Plex Mono', monospace;
+            color: #d4d4d4;
+            letter-spacing: 0.3px;
+        }
+
+        button[kind="primary"] {
+            border: 1px solid rgba(255, 255, 255, 0.25) !important;
+            background: linear-gradient(135deg, #00d1b2, #0ea5e9) !important;
+            color: #000000 !important;
+            font-weight: 700 !important;
+        }
+
+        .stTextInput input, .stTextArea textarea {
+            background-color: #0d0d0d !important;
+            color: #ffffff !important;
+            border: 1px solid rgba(255, 255, 255, 0.20) !important;
+        }
+
+        div[data-baseweb="select"] > div,
+        div[data-baseweb="input"] > div {
+            background: #0d0d0d !important;
+            color: #ffffff !important;
+        }
+
+        [data-testid="stDataFrame"] {
+            background-color: #0d0d0d !important;
+            color: #ffffff !important;
         }
 
         @keyframes riseIn {
@@ -139,13 +185,72 @@ def plot_explanation(explanation: Dict[str, float]) -> plt.Figure:
     """Create contribution chart from feature importance dictionary."""
     features = list(explanation.keys())
     values = [float(explanation[name]) for name in features]
-    colors = ["#2e6f40" if val >= 0 else "#9c2f2f" for val in values]
+    colors = ["#00d1b2" if val >= 0 else "#f43f5e" for val in values]
 
     fig, ax = plt.subplots(figsize=(7, 4))
+    fig.patch.set_facecolor("#070707")
+    ax.set_facecolor("#111111")
+
     ax.barh(features, values, color=colors)
-    ax.set_title("Top Feature Contributions")
-    ax.set_xlabel("Contribution")
+    ax.set_title("Top Feature Contributions", color="#ffffff", pad=12)
+    ax.set_xlabel("Contribution", color="#eaeaea")
+    ax.tick_params(axis="x", colors="#dcdcdc")
+    ax.tick_params(axis="y", colors="#ffffff")
+    ax.grid(axis="x", color="#2b2b2b", linestyle="--", linewidth=0.8, alpha=0.8)
+
+    for spine in ax.spines.values():
+        spine.set_color("#2a2a2a")
+
+    for index, value in enumerate(values):
+        ax.text(
+            value + (0.01 if value >= 0 else -0.01),
+            index,
+            f"{value:+.3f}",
+            va="center",
+            ha="left" if value >= 0 else "right",
+            color="#f5f5f5",
+            fontsize=9,
+        )
+
     ax.invert_yaxis()
+    plt.tight_layout()
+    return fig
+
+
+def plot_probability_distribution(top_probs: Dict[str, float]) -> plt.Figure:
+    """Create a polished dark chart for class probabilities."""
+    labels = list(top_probs.keys())
+    probs = [float(top_probs[name]) for name in labels]
+
+    fig, ax = plt.subplots(figsize=(8, 4.4))
+    fig.patch.set_facecolor("#070707")
+    ax.set_facecolor("#111111")
+
+    palette = ["#38bdf8", "#00d1b2", "#22c55e", "#f59e0b", "#f97316", "#f43f5e", "#a78bfa", "#eab308"]
+    colors = [palette[i % len(palette)] for i in range(len(labels))]
+
+    bars = ax.bar(labels, probs, color=colors, edgecolor="#1f1f1f", linewidth=1.0)
+    ax.set_title("Top Crop Probability Scores", color="#ffffff", pad=12)
+    ax.set_ylabel("Probability", color="#eaeaea")
+    ax.tick_params(axis="x", colors="#ffffff", rotation=20)
+    ax.tick_params(axis="y", colors="#dcdcdc")
+    ax.set_ylim(0, max(probs) * 1.22 if probs else 1)
+    ax.grid(axis="y", color="#2b2b2b", linestyle="--", linewidth=0.8, alpha=0.8)
+
+    for spine in ax.spines.values():
+        spine.set_color("#2a2a2a")
+
+    for bar, prob in zip(bars, probs):
+        ax.text(
+            bar.get_x() + bar.get_width() / 2,
+            bar.get_height() + 0.01,
+            f"{prob:.2%}",
+            ha="center",
+            va="bottom",
+            color="#f8f8f8",
+            fontsize=9,
+        )
+
     plt.tight_layout()
     return fig
 
@@ -239,8 +344,10 @@ def render_results(result: Dict[str, object], forecast_df: Optional[pd.DataFrame
             prob_df = pd.DataFrame(
                 {"crop": list(top_probs.keys()), "probability": list(top_probs.values())}
             )
-            st.dataframe(prob_df, use_container_width=True)
-            st.bar_chart(prob_df.set_index("crop"), y="probability", use_container_width=True)
+            styled_df = prob_df.copy()
+            styled_df["probability"] = styled_df["probability"].map(lambda val: f"{val:.2%}")
+            st.table(styled_df)
+            st.pyplot(plot_probability_distribution(top_probs))
         else:
             st.info("Probability distribution is available only in Local Model mode.")
 
@@ -254,7 +361,8 @@ render_title()
 
 with st.sidebar:
     st.header("Inference Settings")
-    mode = st.radio("Run with", ["Local Models", "Flask API"], index=0)
+    st.caption("Recommended for production: Flask API mode")
+    mode = st.radio("Run with", ["Flask API", "Local Models"], index=0)
     api_url = st.text_input("API URL", value="http://127.0.0.1:5000/predict", disabled=(mode != "Flask API"))
     top_k = st.slider("Top features/classes to show", min_value=3, max_value=8, value=5)
     use_weather_forecast = st.checkbox("Use weather forecast assist", value=False)

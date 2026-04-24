@@ -21,6 +21,8 @@ TARGET_COLUMN = "label"
 
 ANN_MODEL_PATH = MODEL_DIR / "ann_model.h5"
 RF_MODEL_PATH = ARTIFACT_DIR / "random_forest.joblib"
+DECISION_TREE_MODEL_PATH = ARTIFACT_DIR / "decision_tree.joblib"
+ADABOOST_MODEL_PATH = ARTIFACT_DIR / "adaboost.joblib"
 SCALER_PATH = ARTIFACT_DIR / "scaler.joblib"
 LABEL_ENCODER_PATH = ARTIFACT_DIR / "label_encoder.joblib"
 

@@ -5,7 +5,7 @@ Production-style machine learning system that recommends the best crop using soi
 ## Core Capabilities
 
 - Crop recommendation using 7 agronomic features (`N`, `P`, `K`, `temperature`, `humidity`, `ph`, `rainfall`)
-- Hybrid prediction engine with ANN + Random Forest probability ensemble
+- Hybrid prediction engine with AdaBoost + Decision Tree probability ensemble
 - Weather forecasting with LSTM (temperature and rainfall)
 - Explainable AI using SHAP feature attributions
 - Flask API for serving predictions
@@ -44,8 +44,8 @@ project-root/
 flowchart TD
     A[User Input] --> B[Preprocessing]
     B --> C[ANN Model]
-    B --> D[Random Forest Model]
-    C --> E[Ensemble Probability Averaging]
+    B --> D[AdaBoost + Decision Tree Ensemble]
+    C --> E[Probability Averaging]
     D --> E
     E --> F[Crop Recommendation + Confidence]
     F --> G[SHAP Explainer]
@@ -85,7 +85,7 @@ Run from project root in this order:
 
 ```bash
 python -m models.ann_model
-python -m models.random_forest
+python -m models.ensemble_model
 python -m models.weather_lstm
 ```
 
@@ -93,7 +93,8 @@ This pipeline saves:
 
 - `models/ann_model.h5`
 - `models/weather_lstm.keras`
-- `models/artifacts/random_forest.joblib`
+- `models/artifacts/decision_tree.joblib`
+- `models/artifacts/adaboost.joblib`
 - `models/artifacts/scaler.joblib`
 - `models/artifacts/label_encoder.joblib`
 - `models/artifacts/weather_scaler.joblib`
@@ -160,6 +161,17 @@ Features:
 - Recommended crop + confidence
 - SHAP contribution chart
 - Optional LSTM weather forecast integration
+
+## Model Metrics
+
+The table below documents the tree-based ensemble metrics used by the current production pipeline.
+Metrics were captured on the current 80/20 holdout split.
+
+| Model | Test Accuracy | Notes |
+| --- | --- | --- |
+| Decision Tree | 0.9795 | Single-tree baseline used in the ensemble |
+| AdaBoost | 0.9932 | Boosted tree classifier used in the ensemble |
+| Final Ensemble | 0.9795 | Probability average of Decision Tree and AdaBoost |
 
 ## Engineering Notes
 

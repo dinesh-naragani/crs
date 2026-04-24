@@ -299,7 +299,7 @@ def render_title() -> None:
         """
         <div class="hero">
           <h1>Smart Crop Recommendation and Decision Support</h1>
-          <p>Hybrid ANN + Random Forest ensemble with weather-forecast assist and SHAP explainability.</p>
+                    <p>Hybrid AdaBoost + Decision Tree ensemble with weather-forecast assist and SHAP explainability.</p>
         </div>
         """,
         unsafe_allow_html=True,

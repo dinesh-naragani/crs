@@ -16,19 +16,37 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.append(str(PROJECT_ROOT))
 
-from utils.helpers import FEATURE_COLUMNS, RF_MODEL_PATH, SCALER_PATH, prepare_feature_frame
+from utils.helpers import ADABOOST_MODEL_PATH, DECISION_TREE_MODEL_PATH, FEATURE_COLUMNS, SCALER_PATH, prepare_feature_frame
 
 
 class CropShapExplainer:
-    """Explain crop predictions using a TreeExplainer on the RF model."""
+    """Explain crop predictions using the Decision Tree member of the ensemble."""
 
     def __init__(self) -> None:
-        if not RF_MODEL_PATH.exists() or not SCALER_PATH.exists():
-            raise FileNotFoundError("RF model or scaler artifacts are missing. Train models first.")
+        if not SCALER_PATH.exists():
+            raise FileNotFoundError("Scaler artifact is missing. Train models first.")
 
-        self.rf_model = joblib.load(RF_MODEL_PATH)
+        self.tree_model = self._load_tree_model()
         self.scaler = joblib.load(SCALER_PATH)
-        self.explainer = shap.TreeExplainer(self.rf_model)
+        try:
+            self.explainer = shap.TreeExplainer(self.tree_model)
+        except Exception:
+            if ADABOOST_MODEL_PATH.exists() and DECISION_TREE_MODEL_PATH.exists():
+                self.tree_model = joblib.load(DECISION_TREE_MODEL_PATH)
+                self.explainer = shap.TreeExplainer(self.tree_model)
+            else:
+                raise
+
+    @staticmethod
+    def _load_tree_model() -> object:
+        """Load the preferred tree ensemble artifact for SHAP explanations."""
+        if DECISION_TREE_MODEL_PATH.exists():
+            return joblib.load(DECISION_TREE_MODEL_PATH)
+        if ADABOOST_MODEL_PATH.exists():
+            return joblib.load(ADABOOST_MODEL_PATH)
+        raise FileNotFoundError(
+            "AdaBoost or Decision Tree model artifacts are missing. Train models first."
+        )
 
     def _extract_class_shap(self, shap_values, class_idx: int) -> np.ndarray:
         """Handle SHAP output format differences across versions."""

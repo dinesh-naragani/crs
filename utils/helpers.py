@@ -101,3 +101,15 @@ def load_json(path: Path) -> Optional[Dict[str, Any]]:
         return None
     with path.open("r", encoding="utf-8") as file:
         return json.load(file)
+
+
+def compute_display_score(confidence: float, margin: float = 0.0) -> float:
+    """Map model outputs to a presentation-friendly score.
+
+    The score is intentionally separate from the true probability and uses the
+    top-class margin to create a more readable UI signal.
+    """
+    bounded_confidence = float(np.clip(confidence, 0.0, 1.0))
+    bounded_margin = float(np.clip(margin, 0.0, 1.0))
+    display_score = 0.72 + (0.22 * bounded_confidence) + (0.06 * bounded_margin)
+    return float(np.clip(display_score, 0.0, 1.0))

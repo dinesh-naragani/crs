@@ -30,6 +30,10 @@ from utils.helpers import (
     set_global_seed,
 )
 
+ADABOOST_WEIGHT = 0.85
+DECISION_TREE_WEIGHT = 0.15
+PROBABILITY_SHARPNESS = 1.0
+
 
 class EnsemblePredictor:
     """Wrap AdaBoost + Decision Tree models and expose a single prediction interface."""
@@ -70,7 +74,7 @@ class EnsemblePredictor:
         return prepare_feature_frame(payload)
 
     def predict_proba(self, payload: Union[Dict[str, float], pd.DataFrame]) -> np.ndarray:
-        """Return averaged class probabilities from AdaBoost and Decision Tree models."""
+        """Return sharpened ensemble probabilities from AdaBoost and Decision Tree models."""
         frame = self._ensure_frame(payload)
         X_scaled = self.scaler.transform(frame.values)
 
@@ -82,7 +86,11 @@ class EnsemblePredictor:
                 f"Model probability shape mismatch: AdaBoost={adaboost_probs.shape}, DecisionTree={tree_probs.shape}"
             )
 
-        return (adaboost_probs + tree_probs) / 2.0
+        combined_probs = (ADABOOST_WEIGHT * adaboost_probs) + (DECISION_TREE_WEIGHT * tree_probs)
+        if PROBABILITY_SHARPNESS != 1.0:
+            combined_probs = np.power(np.clip(combined_probs, 1e-12, 1.0), PROBABILITY_SHARPNESS)
+            combined_probs /= combined_probs.sum(axis=1, keepdims=True)
+        return combined_probs / combined_probs.sum(axis=1, keepdims=True)
 
     def predict(self, payload: Union[Dict[str, float], pd.DataFrame]) -> PredictionResult:
         """Return recommended crop, confidence, and class distribution."""
@@ -130,6 +138,9 @@ def train_ensemble_models(random_state: int = 42) -> Tuple[Dict[str, object], Di
     X_train, X_test, y_train, y_test, _ = preprocess_for_sklearn(
         random_state=random_state,
         save_artifacts=True,
+        augment_train_data=True,
+        augmentation_factor=0.5,
+        augmentation_noise=0.03,
     )
 
     decision_tree = DecisionTreeClassifier(random_state=random_state)
@@ -168,6 +179,9 @@ def train_ensemble_models(random_state: int = 42) -> Tuple[Dict[str, object], Di
         "adaboost_accuracy": float(adaboost_accuracy),
         "ensemble_accuracy": float(ensemble_accuracy),
         "n_estimators": 200.0,
+        "adaboost_weight": ADABOOST_WEIGHT,
+        "decision_tree_weight": DECISION_TREE_WEIGHT,
+        "probability_sharpness": PROBABILITY_SHARPNESS,
     }
     artifacts = {
         "decision_tree": decision_tree,

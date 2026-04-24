@@ -16,7 +16,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from explainability.shap_explainer import CropShapExplainer
 from models.ensemble_model import EnsemblePredictor
 from models.weather_lstm import forecast_next_weather
-from utils.helpers import FEATURE_COLUMNS, prepare_feature_frame
+from utils.helpers import FEATURE_COLUMNS, compute_display_score, prepare_feature_frame
 
 app = Flask(__name__)
 
@@ -82,11 +82,14 @@ def predict() -> Any:
         probs = predictor.predict_proba(frame)
         class_idx = int(probs[0].argmax())
         result = predictor.predict(frame)
+        ordered_probs = sorted(result.probabilities.values(), reverse=True)
+        margin = ordered_probs[0] - ordered_probs[1] if len(ordered_probs) > 1 else 0.0
         explanation = get_explainer().explain_top_features(payload, predicted_class_index=class_idx, top_k=3)
 
         response = {
             "recommended_crop": result.recommended_crop,
             "confidence": round(result.confidence, 4),
+            "display_score": round(compute_display_score(result.confidence, margin), 4),
             "explanation": explanation,
         }
 

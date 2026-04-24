@@ -55,6 +55,9 @@ def train_ann_model(
     X_train, X_test, y_train, y_test, artifacts = preprocess_data(
         random_state=random_state,
         save_artifacts=True,
+        augment_train_data=True,
+        augmentation_factor=0.5,
+        augmentation_noise=0.03,
     )
 
     model = build_ann_model(input_dim=X_train.shape[1], num_classes=y_train.shape[1])

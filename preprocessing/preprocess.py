@@ -32,6 +32,15 @@ class PreprocessingArtifacts:
     label_encoder: LabelEncoder
 
 
+@dataclass
+class AugmentationConfig:
+    """Parameters controlling synthetic training-data generation."""
+
+    enabled: bool = False
+    factor: float = 0.5
+    noise_scale: float = 0.03
+
+
 def load_dataset(dataset_path: Path = DATASET_PATH) -> pd.DataFrame:
     """Load the crop dataset from disk."""
     if not dataset_path.exists():
@@ -53,11 +62,59 @@ def _handle_missing_values(df: pd.DataFrame) -> pd.DataFrame:
     return clean_df
 
 
+def _augment_training_data(
+    X_train: np.ndarray,
+    y_train_int: np.ndarray,
+    random_state: int,
+    factor: float = 0.5,
+    noise_scale: float = 0.03,
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Generate synthetic training rows by adding small class-aware Gaussian noise.
+
+    Augmentation is applied only on the training split to avoid test leakage.
+    """
+    if factor <= 0:
+        return X_train, y_train_int
+
+    rng = np.random.default_rng(random_state)
+    samples_to_generate = max(1, int(len(X_train) * factor))
+    global_min = X_train.min(axis=0)
+    global_max = X_train.max(axis=0)
+
+    class_stds = {}
+    for class_index in np.unique(y_train_int):
+        class_rows = X_train[y_train_int == class_index]
+        class_stds[class_index] = np.maximum(class_rows.std(axis=0), 1e-3)
+
+    synthetic_rows = []
+    synthetic_labels = []
+    available_indices = np.arange(len(X_train))
+
+    for _ in range(samples_to_generate):
+        base_index = int(rng.choice(available_indices))
+        base_row = X_train[base_index]
+        label = int(y_train_int[base_index])
+        feature_noise = rng.normal(0.0, class_stds[label] * noise_scale)
+        synthetic_row = np.clip(base_row + feature_noise, global_min, global_max)
+        synthetic_rows.append(synthetic_row)
+        synthetic_labels.append(label)
+
+    if not synthetic_rows:
+        return X_train, y_train_int
+
+    augmented_X = np.vstack([X_train, np.asarray(synthetic_rows, dtype=X_train.dtype)])
+    augmented_y = np.concatenate([y_train_int, np.asarray(synthetic_labels, dtype=y_train_int.dtype)])
+    return augmented_X, augmented_y
+
+
 def preprocess_data(
     dataset_path: Path = DATASET_PATH,
     test_size: float = 0.2,
     random_state: int = 42,
     save_artifacts: bool = True,
+    augment_train_data: bool = False,
+    augmentation_factor: float = 0.5,
+    augmentation_noise: float = 0.03,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, PreprocessingArtifacts]:
     """Prepare train/test data for model training.
 
@@ -92,6 +149,16 @@ def preprocess_data(
         stratify=y_int,
     )
 
+    if augment_train_data:
+        X_train, y_train_int = _augment_training_data(
+            X_train=X_train,
+            y_train_int=y_train_int,
+            random_state=random_state,
+            factor=augmentation_factor,
+            noise_scale=augmentation_noise,
+        )
+        y_train = to_categorical(y_train_int, num_classes=len(label_encoder.classes_))
+
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_test = scaler.transform(X_test)
@@ -118,6 +185,9 @@ def preprocess_for_sklearn(
     test_size: float = 0.2,
     random_state: int = 42,
     save_artifacts: bool = True,
+    augment_train_data: bool = False,
+    augmentation_factor: float = 0.5,
+    augmentation_noise: float = 0.03,
 ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, PreprocessingArtifacts]:
     """Prepare train/test data where labels are integer-encoded (for sklearn)."""
     X_train, X_test, y_train, y_test, artifacts = preprocess_data(
@@ -125,6 +195,9 @@ def preprocess_for_sklearn(
         test_size=test_size,
         random_state=random_state,
         save_artifacts=save_artifacts,
+        augment_train_data=augment_train_data,
+        augmentation_factor=augmentation_factor,
+        augmentation_noise=augmentation_noise,
     )
 
     y_train_int = np.argmax(y_train, axis=1)

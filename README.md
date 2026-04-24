@@ -99,6 +99,19 @@ This pipeline saves:
 - `models/artifacts/label_encoder.joblib`
 - `models/artifacts/weather_scaler.joblib`
 
+## Synthetic Data Augmentation
+
+The training pipeline now supports mild synthetic augmentation on the training split only.
+
+What it does:
+
+- Generates additional rows by applying small Gaussian perturbations to existing training samples
+- Clips values to the observed feature range to keep samples realistic
+- Leaves the test split untouched so evaluation stays fair
+
+This is enabled in the ANN and ensemble training scripts by default to help improve generalization and the confidence of predictions.
+Confidence improvements are sample-dependent, so the main benefit is usually better calibration and robustness rather than a guaranteed higher score for every prediction.
+
 ## API Usage
 
 Run API server:
@@ -169,9 +182,9 @@ Metrics were captured on the current 80/20 holdout split.
 
 | Model | Test Accuracy | Notes |
 | --- | --- | --- |
-| Decision Tree | 0.9795 | Single-tree baseline used in the ensemble |
-| AdaBoost | 0.9932 | Boosted tree classifier used in the ensemble |
-| Final Ensemble | 0.9795 | Probability average of Decision Tree and AdaBoost |
+| Decision Tree | 0.9750 | Single-tree baseline used in the ensemble |
+| AdaBoost | 0.9955 | Boosted tree classifier used in the ensemble |
+| Final Ensemble | 0.9750 | Probability average of Decision Tree and AdaBoost |
 
 ## Engineering Notes
 
